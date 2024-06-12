@@ -178,27 +178,5 @@ def main():
     conn.close()
 
 
-def parse_cmdline():
-    parser = ArgumentParser(description=__doc__, formatter_class=RawTextHelpFormatter)
-
-    parser.add_argument("-v", "--verbose", action="store_true", help="print debug info")
-
-    parser.add_argument(
-        "dsn",
-        # default=os.environ.get("DATABASE_URL"),
-        default=os.environ.get("DATABASE_URL"),
-        nargs="?",
-        help="""\
-database connection string\
- (default: value of the DATABASE_URL environment variable)
-            """,
-    )
-
-    opt = parser.parse_args()
-    if opt.dsn is None:
-        parser.error("database connection string not set")
-    return opt
-
-
 if __name__ == "__main__":
     main()
