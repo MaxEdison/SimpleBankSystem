@@ -123,30 +123,37 @@ def run_transaction(conn, op, max_retries=3):
 
 
 def main():
-    opt = parse_cmdline()
-    logging.basicConfig(level=logging.DEBUG if opt.verbose else logging.INFO)
+    URL = "YOUR_DATABASE_URL"
+
+    if URL == "YOUR_DATABASE_URL":
+        print("Please set the DATABASE_URL first.\nmain() -> URL")
+        return "Exiting..."
+
     try:
-
-        db_url = opt.dsn
-        conn = psycopg2.connect(db_url,
-                                application_name="$ docs_simplecrud_psycopg2",
+        conn = psycopg2.connect(URL,
+                                application_name="$imple Bank System",
                                 cursor_factory=psycopg2.extras.RealDictCursor)
-    except Exception as e:
-        logging.fatal("database connection failed")
-        logging.fatal(e)
-        return
-    while True:
-        int_input = input(
-            "1. Transfer money\n2. delete account\n3. Create account\n4. Show accounts\n0. Exit \nEnter The number : ")
 
-        if int_input == '1':
-            amount = int(input("Enter transfer money :"))
-            toId = int(input("to ID :"))
-            fromId = int(input("From ID :"))
+    except Exception as e:
+        print(f"database connection failed -> \n{e}")
+        return
+        
+    while True:
+        inp = input("""
+        1. Transfer money
+        2. delete account
+        3. Create account
+        4. Show accounts
+        0. Exit
+        >>> """)
+
+        if inp == '1':
+            amount = int(input("amount > "))
+            toId = int(input("to ID > "))
+            fromId = int(input("From ID > "))
 
             try:
-                run_transaction(conn, lambda conn: transfer_funds(
-                    conn, fromId, toId, amount))
+                run_transaction(conn, lambda conn: transfer_funds(conn, fromId, toId, amount))
 
             except ValueError as ve:
                 # Below, we print the error and continue on so this example is easy to
@@ -155,15 +162,15 @@ def main():
                 logging.debug("run_transaction(conn, op) failed: %s", ve)
             print_balances(conn)
 
-        elif int_input == '2':
+        elif inp == '2':
             rm_ID = int(input("Enter the Account ID :"))
             delete_account(rm_ID, conn)
 
-        elif int_input == '3':
+        elif inp == '3':
             create_accounts(conn)
-        elif int_input == '4':
+        elif inp == '4':
             show_accounts(conn)
-        elif int_input == '0':
+        elif inp == '0':
             break
         else:
             pass
