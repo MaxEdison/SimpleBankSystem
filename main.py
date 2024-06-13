@@ -15,7 +15,11 @@ def create_accounts(conn):
     balance = input("Enter the balance : ")
 
     with conn.cursor() as cur:
-        cur.execute("INSERT INTO bank values(%s,%s,%s,%s,'true')", (id_acc, full_name, city, balance))
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS bank (id_acc int, full_name varchar, city varchar, balance int, status varchar)")
+        
+        cur.execute(
+            "INSERT INTO bank values(%s,%s,%s,%s,'true')", (id_acc, full_name, city, balance))
 
     conn.commit()
     print("account created.")
@@ -55,7 +59,7 @@ def show_accounts(conn):
         print("_" * 100)
 
         for row in rows:
-            print("account id: {0} | full Name:{1} | city: {2} | balance: ${3:2d} | status: {4}".format(row['id_acc'],
+            print("account id: {0} | full Name: {1} | city: {2} | balance: ${3:2d} | status: {4}".format(row['id_acc'],
                                                                                                         row[
                                                                                                             'full_name'],
                                                                                                         row['city'],
@@ -64,58 +68,63 @@ def show_accounts(conn):
             print("_" * 100)
 
 
-def transfer_funds(conn, frm, to, amount):
+def transfer_funds(conn):
+
+    amount = int(input("amount > "))
+    toId = int(input("to ID > "))
+    fromId = int(input("From ID > "))
+
     with conn.cursor() as cur:
-        cur.execute("SELECT balance FROM bank WHERE id_acc = %s", (frm,))
-        from_balance = cur.fetchone()['balance']
+        cur.execute("SELECT * FROM bank WHERE id_acc = %s", (fromId,))
+        frm_acc = cur.fetchall()
+        cur.execute("SELECT * FROM bank WHERE id_acc = %s", (toId,))
+        to_acc = cur.fetchall()
+        
+        if to_acc == []:
+            print(f"Account {toId} not found")
+            return
+
+        elif frm_acc == []:
+            print(f"Account {fromId} not found")
+            return
+
+        from_balance = frm_acc[0]['balance']
         while from_balance < amount:
-            amount = int(input("The balance < amount ,try again : "))
+            amount = int(input(f"Account {fromId} balance is not enough ,try again : "))
 
         cur.execute(
             "UPDATE bank SET balance = balance - %s WHERE id_acc = %s", (
-                amount, frm)
-        )
+                amount, frm_acc[0]['id_acc']))
+
         cur.execute(
             "UPDATE bank SET balance = balance + %s WHERE id_acc = %s", (
-                amount, to)
-        )
+                amount, to_acc[0]['id_acc']))
 
     conn.commit()
-    logging.debug("transfer_funds(): status message: %s", cur.statusmessage)
+    print("Transfer Successfull!")
 
 
-def run_transaction(conn, op, max_retries=3):
-    """
-    Execute the operation *op(conn)* retrying serialization failure.
+def run_transaction(conn, max_retries=3):
 
-    If the database returns an error asking to retry the transaction, retry it
-    *max_retries* times before giving up (and propagate it).
-    """
-    # leaving this block the transaction will commit or rollback
-    # (if leaving with an exception)
     with conn:
         for retry in range(1, max_retries + 1):
             try:
-                op(conn)
-
-                # If we reach this point, we were able to commit, so we break
-                # from the retry loop.
+                transfer_funds(conn)
+                print("Transaction succeeded!")
                 return
 
             except SerializationFailure as e:
-                # This is a retry error, so we roll back the current
-                # transaction and sleep for a bit before retrying. The
-                # sleep time increases for each failed transaction.
-                logging.debug("got error: %s", e)
+                print("got error: %s", e)
                 conn.rollback()
-                logging.debug("EXECUTE SERIALIZATION_FAILURE BRANCH")
+                print("Transaction rolled back.")
+
                 sleep_ms = (2 ** retry) * 0.1 * (random.random() + 0.5)
-                logging.debug("Sleeping %s seconds", sleep_ms)
+                print("Trying again in %.1f ms", sleep_ms)
                 time.sleep(sleep_ms)
+                
 
             except psycopg2.Error as e:
-                logging.debug("got error: %s", e)
-                logging.debug("EXECUTE NON-SERIALIZATION_FAILURE BRANCH")
+                print("got error: %s", e)
                 raise e
 
         raise ValueError(
@@ -124,6 +133,7 @@ def run_transaction(conn, op, max_retries=3):
 
 def main():
     URL = "YOUR_DATABASE_URL"
+
 
     if URL == "YOUR_DATABASE_URL":
         print("Please set the DATABASE_URL first.\nmain() -> URL")
@@ -148,18 +158,13 @@ def main():
         >>> """)
 
         if inp == '1':
-            amount = int(input("amount > "))
-            toId = int(input("to ID > "))
-            fromId = int(input("From ID > "))
+ 
 
             try:
-                run_transaction(conn, lambda conn: transfer_funds(conn, fromId, toId, amount))
+                run_transaction(conn)
 
             except ValueError as ve:
-                # Below, we print the error and continue on so this example is easy to
-                # run (and run, and run...).  In real code you should handle this error
-                # and any others thrown by the database interaction.
-                logging.debug("run_transaction(conn, op) failed: %s", ve)
+                print(ve)
             print_balances(conn)
 
         elif inp == '2':
