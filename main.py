@@ -1,8 +1,6 @@
-import logging
 import os
 import random
 import time
-from argparse import ArgumentParser, RawTextHelpFormatter
 import psycopg2
 from psycopg2.errors import SerializationFailure
 import psycopg2.extras
